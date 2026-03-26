@@ -1,15 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Agent OS - AI Portable Computer API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: agents
+    description: Agent registration and management
+  - name: commands
+    description: Computer control commands
+  - name: system
+    description: System information and state
 paths:
   /healthz:
     get:
@@ -24,6 +29,182 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List registered agents
+      responses:
+        "200":
+          description: List of agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
+    post:
+      operationId: registerAgent
+      tags: [agents]
+      summary: Register a new agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterAgentRequest"
+      responses:
+        "201":
+          description: Agent registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /agents/{agentId}:
+    delete:
+      operationId: unregisterAgent
+      tags: [agents]
+      summary: Unregister an agent
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent unregistered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /commands:
+    get:
+      operationId: listCommands
+      tags: [commands]
+      summary: Get pending and recent commands
+      responses:
+        "200":
+          description: Command list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Command"
+    post:
+      operationId: executeCommand
+      tags: [commands]
+      summary: Execute a computer control command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandRequest"
+      responses:
+        "200":
+          description: Command result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandResult"
+
+  /system/screenshot:
+    get:
+      operationId: getScreenshot
+      tags: [system]
+      summary: Get current screenshot of the desktop
+      responses:
+        "200":
+          description: Screenshot data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+
+  /system/state:
+    get:
+      operationId: getSystemState
+      tags: [system]
+      summary: Get current system state
+      responses:
+        "200":
+          description: System state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemState"
+
+  /system/apps:
+    get:
+      operationId: listApps
+      tags: [system]
+      summary: List available applications
+      responses:
+        "200":
+          description: Application list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/App"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [commands]
+      summary: List all tasks
+      responses:
+        "200":
+          description: Task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [commands]
+      summary: Create and start a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      tags: [commands]
+      summary: Get task status
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +215,252 @@ components:
       required:
         - status
 
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        endpoint:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, inactive, busy]
+        connectedAt:
+          type: string
+        lastSeen:
+          type: string
+      required:
+        - id
+        - name
+        - capabilities
+        - status
+        - connectedAt
+
+    RegisterAgentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        endpoint:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - capabilities
+
+    CommandRequest:
+      type: object
+      properties:
+        agentId:
+          type: string
+        type:
+          type: string
+          enum: [click, double_click, type, scroll, key, screenshot, open_app, close_app, terminal, navigate, drag]
+        payload:
+          type: object
+          additionalProperties: true
+      required:
+        - type
+        - payload
+
+    Command:
+      type: object
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+        type:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: [pending, executing, completed, failed]
+        createdAt:
+          type: string
+        completedAt:
+          type: string
+        result:
+          type: object
+          additionalProperties: true
+      required:
+        - id
+        - type
+        - payload
+        - status
+        - createdAt
+
+    CommandResult:
+      type: object
+      properties:
+        commandId:
+          type: string
+        success:
+          type: boolean
+        result:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+      required:
+        - commandId
+        - success
+
+    ScreenshotResponse:
+      type: object
+      properties:
+        dataUrl:
+          type: string
+        timestamp:
+          type: string
+        width:
+          type: number
+        height:
+          type: number
+      required:
+        - timestamp
+
+    SystemState:
+      type: object
+      properties:
+        runningApps:
+          type: array
+          items:
+            type: string
+        cpu:
+          type: number
+        memory:
+          type: number
+        uptime:
+          type: number
+        connectedAgents:
+          type: number
+        totalCommands:
+          type: number
+      required:
+        - runningApps
+        - cpu
+        - memory
+        - uptime
+        - connectedAgents
+        - totalCommands
+
+    App:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: string
+        description:
+          type: string
+        isOpen:
+          type: boolean
+      required:
+        - id
+        - name
+        - icon
+        - description
+        - isOpen
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskStep"
+        createdAt:
+          type: string
+        completedAt:
+          type: string
+        progress:
+          type: number
+      required:
+        - id
+        - name
+        - status
+        - steps
+        - createdAt
+        - progress
+
+    TaskStep:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        commandType:
+          type: string
+        result:
+          type: string
+      required:
+        - id
+        - description
+        - status
+
+    CreateTaskRequest:
+      type: object
+      properties:
+        agentId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              description:
+                type: string
+              commandType:
+                type: string
+              payload:
+                type: object
+                additionalProperties: true
+            required:
+              - description
+              - commandType
+      required:
+        - name
+        - steps

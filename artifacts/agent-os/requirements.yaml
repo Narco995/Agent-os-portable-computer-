@@ -1,0 +1,16 @@
+packages:
+  "framer-motion": "Window dragging and OS animations"
+  "zustand": "Desktop window state management"
+  "recharts": "Hardware monitor charts"
+  "date-fns": "Time formatting for OS clock"
+  "clsx": "Class merging"
+  "tailwind-merge": "Class merging"
+
+images:
+  - path: "artifacts/agent-os/public/images/cyberpunk-bg.png"
+    description: "Dark moody cyberpunk city landscape, glowing neon cyan and green accents, rain, terminal OS aesthetics, minimalist retro-futuristic grid"
+    aspect_ratio: "16:9"
+
+notes:
+  - Uses @workspace/api-client-react hooks for all API interactions
+  - Relies on WebSocket connection at /api/ws for real-time events
