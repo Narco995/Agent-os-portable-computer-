@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Agent OS - AI Portable Computer API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import type { CommandPayload } from "./commandPayload";
 import type { CommandResultProperty } from "./commandResultProperty";

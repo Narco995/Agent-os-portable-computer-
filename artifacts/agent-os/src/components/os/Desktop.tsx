@@ -7,14 +7,34 @@ import { HardwareMonitorApp } from '../apps/HardwareMonitorApp';
 import { RouterApp } from '../apps/RouterApp';
 import { BrowserApp } from '../apps/BrowserApp';
 import { EditorApp } from '../apps/EditorApp';
+import { AIChatApp } from '../apps/AIChatApp';
+import { FileManagerApp } from '../apps/FileManagerApp';
+import { CodeIDEApp } from '../apps/CodeIDEApp';
+import { MemoryApp } from '../apps/MemoryApp';
 import { AgentControlPanel } from '../panels/AgentControlPanel';
 import { ComputerUsePanel } from '../panels/ComputerUsePanel';
-import { SquareTerminal, Globe, Activity, Cpu, Code } from 'lucide-react';
+import {
+  SquareTerminal, Globe, Activity, Cpu, Code,
+  Bot, FolderOpen, Terminal, Brain,
+} from 'lucide-react';
 
-const DesktopIcon = ({ id, label, icon: Icon }: { id: any, label: string, icon: any }) => {
+const APP_ICONS: Record<string, React.ElementType> = {
+  terminal:    SquareTerminal,
+  browser:     Globe,
+  monitor:     Activity,
+  router:      Cpu,
+  editor:      Code,
+  aichat:      Bot,
+  filemanager: FolderOpen,
+  codeide:     Terminal,
+  memory:      Brain,
+};
+
+const DesktopIcon = ({ id, label }: { id: any; label: string }) => {
   const { openApp } = useOSStore();
+  const Icon = APP_ICONS[id] ?? Code;
   return (
-    <button 
+    <button
       onDoubleClick={() => openApp(id)}
       className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors group w-24"
     >
@@ -31,23 +51,27 @@ const DesktopIcon = ({ id, label, icon: Icon }: { id: any, label: string, icon: 
 export function Desktop() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-background relative flex flex-col text-foreground select-none">
-      {/* Background Image */}
-      <div 
+      {/* Background */}
+      <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40"
         style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/cyberpunk-bg.png)` }}
       />
-      
-      {/* Cyberpunk CRT Effects */}
+
+      {/* CRT Effects */}
       <div className="absolute inset-0 z-[1] crt-overlay" />
       <div className="absolute inset-0 z-[1] scanline" />
 
-      {/* Desktop Area */}
+      {/* Desktop Icons */}
       <div className="flex-1 relative z-10 p-6 flex flex-col flex-wrap content-start gap-2">
-        <DesktopIcon id="terminal" label="Terminal" icon={SquareTerminal} />
-        <DesktopIcon id="browser" label="Browser" icon={Globe} />
-        <DesktopIcon id="monitor" label="Sys Monitor" icon={Activity} />
-        <DesktopIcon id="router" label="AI Router" icon={Cpu} />
-        <DesktopIcon id="editor" label="Editor" icon={Code} />
+        <DesktopIcon id="terminal"    label="Terminal" />
+        <DesktopIcon id="browser"     label="Browser" />
+        <DesktopIcon id="monitor"     label="Sys Monitor" />
+        <DesktopIcon id="router"      label="AI Router" />
+        <DesktopIcon id="editor"      label="Editor" />
+        <DesktopIcon id="aichat"      label="AI Chat" />
+        <DesktopIcon id="filemanager" label="Files" />
+        <DesktopIcon id="codeide"     label="Code IDE" />
+        <DesktopIcon id="memory"      label="Memory" />
       </div>
 
       {/* Windows */}
@@ -57,6 +81,10 @@ export function Desktop() {
         <Window id="router"><RouterApp /></Window>
         <Window id="browser"><BrowserApp /></Window>
         <Window id="editor"><EditorApp /></Window>
+        <Window id="aichat"><AIChatApp /></Window>
+        <Window id="filemanager"><FileManagerApp /></Window>
+        <Window id="codeide"><CodeIDEApp /></Window>
+        <Window id="memory"><MemoryApp /></Window>
       </div>
 
       {/* Side Panels */}

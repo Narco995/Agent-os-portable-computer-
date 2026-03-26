@@ -3,12 +3,11 @@
  * Do not edit manually.
  * Api
  * Agent OS - AI Portable Computer API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -192,4 +191,226 @@ export const GetTaskResponse = zod.object({
   createdAt: zod.string(),
   completedAt: zod.string().optional(),
   progress: zod.number(),
+});
+
+/**
+ * @summary List files and directories
+ */
+export const ListFilesQueryParams = zod.object({
+  path: zod.coerce.string().optional(),
+});
+
+export const ListFilesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  path: zod.string(),
+  type: zod.enum(["file", "directory"]),
+  content: zod.string().optional(),
+  size: zod.number().optional(),
+  mimeType: zod.string().optional(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListFilesResponse = zod.array(ListFilesResponseItem);
+
+/**
+ * @summary Create a file or directory
+ */
+export const CreateFileBody = zod.object({
+  name: zod.string(),
+  path: zod.string(),
+  type: zod.enum(["file", "directory"]),
+  content: zod.string().optional(),
+  mimeType: zod.string().optional(),
+});
+
+/**
+ * @summary Get file content
+ */
+export const GetFileParams = zod.object({
+  fileId: zod.coerce.string(),
+});
+
+export const GetFileResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  path: zod.string(),
+  type: zod.enum(["file", "directory"]),
+  content: zod.string().optional(),
+  size: zod.number().optional(),
+  mimeType: zod.string().optional(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update file content
+ */
+export const UpdateFileParams = zod.object({
+  fileId: zod.coerce.string(),
+});
+
+export const UpdateFileBody = zod.object({
+  content: zod.string().optional(),
+  name: zod.string().optional(),
+});
+
+export const UpdateFileResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  path: zod.string(),
+  type: zod.enum(["file", "directory"]),
+  content: zod.string().optional(),
+  size: zod.number().optional(),
+  mimeType: zod.string().optional(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete file or directory
+ */
+export const DeleteFileParams = zod.object({
+  fileId: zod.coerce.string(),
+});
+
+export const DeleteFileResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary List agent memories
+ */
+export const ListMemoriesQueryParams = zod.object({
+  agentId: zod.coerce.string().optional(),
+  type: zod.coerce.string().optional(),
+});
+
+export const ListMemoriesResponseItem = zod.object({
+  id: zod.string(),
+  agentId: zod.string().optional(),
+  type: zod.enum(["episodic", "semantic", "procedural", "note"]),
+  content: zod.string(),
+  tags: zod.array(zod.string()),
+  importance: zod.number(),
+  createdAt: zod.string(),
+});
+export const ListMemoriesResponse = zod.array(ListMemoriesResponseItem);
+
+/**
+ * @summary Store a memory
+ */
+export const CreateMemoryBody = zod.object({
+  agentId: zod.string().optional(),
+  type: zod.enum(["episodic", "semantic", "procedural", "note"]),
+  content: zod.string(),
+  tags: zod.array(zod.string()).optional(),
+  importance: zod.number().optional(),
+});
+
+/**
+ * @summary Delete a memory
+ */
+export const DeleteMemoryParams = zod.object({
+  memoryId: zod.coerce.string(),
+});
+
+export const DeleteMemoryResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Execute code in a sandbox
+ */
+export const RunCodeBody = zod.object({
+  language: zod.enum(["javascript", "python", "bash"]),
+  code: zod.string(),
+  agentId: zod.string().optional(),
+});
+
+export const RunCodeResponse = zod.object({
+  stdout: zod.string(),
+  stderr: zod.string(),
+  exitCode: zod.number(),
+  executionTime: zod.number(),
+  success: zod.boolean(),
+});
+
+/**
+ * @summary List all conversations
+ */
+export const ListOpenaiConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListOpenaiConversationsResponse = zod.array(
+  ListOpenaiConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateOpenaiConversationBody = zod.object({
+  title: zod.string(),
+});
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetOpenaiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOpenaiConversationResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      role: zod.string(),
+      content: zod.string(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteOpenaiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListOpenaiMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListOpenaiMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  role: zod.string(),
+  content: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListOpenaiMessagesResponse = zod.array(
+  ListOpenaiMessagesResponseItem,
+);
+
+/**
+ * @summary Send a text message and receive a streaming response
+ */
+export const SendOpenaiMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendOpenaiMessageBody = zod.object({
+  content: zod.string(),
 });

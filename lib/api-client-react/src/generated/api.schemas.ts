@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Agent OS - AI Portable Computer API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
@@ -174,3 +174,146 @@ export interface CreateTaskRequest {
   description?: string;
   steps: CreateTaskRequestStepsItem[];
 }
+
+export type VirtualFileType =
+  (typeof VirtualFileType)[keyof typeof VirtualFileType];
+
+export const VirtualFileType = {
+  file: "file",
+  directory: "directory",
+} as const;
+
+export interface VirtualFile {
+  id: string;
+  name: string;
+  path: string;
+  type: VirtualFileType;
+  content?: string;
+  size?: number;
+  mimeType?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateFileRequestType =
+  (typeof CreateFileRequestType)[keyof typeof CreateFileRequestType];
+
+export const CreateFileRequestType = {
+  file: "file",
+  directory: "directory",
+} as const;
+
+export interface CreateFileRequest {
+  name: string;
+  path: string;
+  type: CreateFileRequestType;
+  content?: string;
+  mimeType?: string;
+}
+
+export interface UpdateFileRequest {
+  content?: string;
+  name?: string;
+}
+
+export type MemoryType = (typeof MemoryType)[keyof typeof MemoryType];
+
+export const MemoryType = {
+  episodic: "episodic",
+  semantic: "semantic",
+  procedural: "procedural",
+  note: "note",
+} as const;
+
+export interface Memory {
+  id: string;
+  agentId?: string;
+  type: MemoryType;
+  content: string;
+  tags: string[];
+  importance: number;
+  createdAt: string;
+}
+
+export type CreateMemoryRequestType =
+  (typeof CreateMemoryRequestType)[keyof typeof CreateMemoryRequestType];
+
+export const CreateMemoryRequestType = {
+  episodic: "episodic",
+  semantic: "semantic",
+  procedural: "procedural",
+  note: "note",
+} as const;
+
+export interface CreateMemoryRequest {
+  agentId?: string;
+  type: CreateMemoryRequestType;
+  content: string;
+  tags?: string[];
+  importance?: number;
+}
+
+export type RunCodeRequestLanguage =
+  (typeof RunCodeRequestLanguage)[keyof typeof RunCodeRequestLanguage];
+
+export const RunCodeRequestLanguage = {
+  javascript: "javascript",
+  python: "python",
+  bash: "bash",
+} as const;
+
+export interface RunCodeRequest {
+  language: RunCodeRequestLanguage;
+  code: string;
+  agentId?: string;
+}
+
+export interface RunCodeResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  executionTime: number;
+  success: boolean;
+}
+
+export interface OpenaiConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface OpenaiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateOpenaiConversationBody {
+  title: string;
+}
+
+export interface SendOpenaiMessageBody {
+  content: string;
+}
+
+export interface OpenaiConversationWithMessages {
+  id: number;
+  title: string;
+  createdAt: string;
+  messages: OpenaiMessage[];
+}
+
+export interface OpenaiError {
+  error: string;
+}
+
+export type ListFilesParams = {
+  path?: string;
+};
+
+export type ListMemoriesParams = {
+  agentId?: string;
+  type?: string;
+};

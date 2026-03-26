@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Agent OS - AI Portable Computer API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export * from "./agent";
@@ -18,15 +18,35 @@ export * from "./commandResult";
 export * from "./commandResultProperty";
 export * from "./commandResultResult";
 export * from "./commandStatus";
+export * from "./createFileRequest";
+export * from "./createFileRequestType";
+export * from "./createMemoryRequest";
+export * from "./createMemoryRequestType";
+export * from "./createOpenaiConversationBody";
 export * from "./createTaskRequest";
 export * from "./createTaskRequestStepsItem";
 export * from "./createTaskRequestStepsItemPayload";
 export * from "./healthStatus";
+export * from "./listFilesParams";
+export * from "./listMemoriesParams";
+export * from "./memory";
+export * from "./memoryType";
+export * from "./openaiConversation";
+export * from "./openaiConversationWithMessages";
+export * from "./openaiError";
+export * from "./openaiMessage";
 export * from "./registerAgentRequest";
+export * from "./runCodeRequest";
+export * from "./runCodeRequestLanguage";
+export * from "./runCodeResult";
 export * from "./screenshotResponse";
+export * from "./sendOpenaiMessageBody";
 export * from "./successResponse";
 export * from "./systemState";
 export * from "./task";
 export * from "./taskStatus";
 export * from "./taskStep";
 export * from "./taskStepStatus";
+export * from "./updateFileRequest";
+export * from "./virtualFile";
+export * from "./virtualFileType";
