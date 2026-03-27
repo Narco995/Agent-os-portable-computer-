@@ -52,13 +52,14 @@ All apps live in `artifacts/agent-os/src/components/apps/`:
 |-----|------|-------------|
 | Terminal | `TerminalApp.tsx` | Bash-like terminal with command simulation |
 | Browser | `BrowserApp.tsx` | Virtual web browser |
-| System Monitor | `HardwareMonitorApp.tsx` | CPU/memory/network charts |
-| AI Router | `RouterApp.tsx` | Multi-agent management and dispatch |
+| System Monitor | `HardwareMonitorApp.tsx` | Rich hardware metrics, area charts, AI compute layer, network interfaces |
+| AI Router | `RouterApp.tsx` | 4-tab multi-agent hub: Network, Dispatch, Tasks, Events (live WS feed) |
 | Code Editor | `EditorApp.tsx` | Syntax-highlighted text editor |
 | AI Chat | `AIChatApp.tsx` | Real SSE-streaming chat with GPT-5.2 |
 | File Manager | `FileManagerApp.tsx` | Virtual filesystem CRUD browser |
 | Code IDE | `CodeIDEApp.tsx` | Execute JavaScript, Python, Bash in sandbox |
 | Memory Vault | `MemoryApp.tsx` | Agent episodic/semantic/procedural memory |
+| Task Forge | `TasksApp.tsx` | Multi-step task orchestration with real-time progress |
 
 Window management, app registry, and z-order: `src/store/os-store.ts`
 Desktop icons + window rendering: `src/components/os/Desktop.tsx`

@@ -11,11 +11,12 @@ import { AIChatApp } from '../apps/AIChatApp';
 import { FileManagerApp } from '../apps/FileManagerApp';
 import { CodeIDEApp } from '../apps/CodeIDEApp';
 import { MemoryApp } from '../apps/MemoryApp';
+import { TasksApp } from '../apps/TasksApp';
 import { AgentControlPanel } from '../panels/AgentControlPanel';
 import { ComputerUsePanel } from '../panels/ComputerUsePanel';
 import {
   SquareTerminal, Globe, Activity, Cpu, Code,
-  Bot, FolderOpen, Terminal, Brain,
+  Bot, FolderOpen, Terminal, Brain, ListChecks,
 } from 'lucide-react';
 
 const APP_ICONS: Record<string, React.ElementType> = {
@@ -28,6 +29,7 @@ const APP_ICONS: Record<string, React.ElementType> = {
   filemanager: FolderOpen,
   codeide:     Terminal,
   memory:      Brain,
+  tasks:       ListChecks,
 };
 
 const DesktopIcon = ({ id, label }: { id: any; label: string }) => {
@@ -72,6 +74,7 @@ export function Desktop() {
         <DesktopIcon id="filemanager" label="Files" />
         <DesktopIcon id="codeide"     label="Code IDE" />
         <DesktopIcon id="memory"      label="Memory" />
+        <DesktopIcon id="tasks"       label="Task Forge" />
       </div>
 
       {/* Windows */}
@@ -85,6 +88,7 @@ export function Desktop() {
         <Window id="filemanager"><FileManagerApp /></Window>
         <Window id="codeide"><CodeIDEApp /></Window>
         <Window id="memory"><MemoryApp /></Window>
+        <Window id="tasks"><TasksApp /></Window>
       </div>
 
       {/* Side Panels */}

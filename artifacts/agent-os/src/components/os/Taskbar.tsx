@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { useOSStore, APPS, AppId } from '@/store/os-store';
 import {
   SquareTerminal, Globe, Activity, Cpu, Code, Command,
-  LayoutGrid, MonitorPlay, Bot, FolderOpen, Terminal, Brain,
+  LayoutGrid, MonitorPlay, Bot, FolderOpen, Terminal, Brain, ListChecks,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -18,6 +18,7 @@ const getIcon = (iconName: string) => {
     case 'FolderOpen':     return <FolderOpen size={18} />;
     case 'Terminal':       return <Terminal size={18} />;
     case 'Brain':          return <Brain size={18} />;
+    case 'ListChecks':     return <ListChecks size={18} />;
     default:               return <SquareTerminal size={18} />;
   }
 };
@@ -72,7 +73,6 @@ export function Taskbar() {
                   isActive ? 'bg-primary shadow-[0_0_6px_var(--color-primary)]' : 'bg-white/50',
                 )} />
               )}
-              {/* tooltip */}
               <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/90 border border-white/10 rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                 {app.title}
               </span>
