@@ -1,144 +1,130 @@
 import { Router, type IRouter } from "express";
+import { exec } from "child_process";
+import { promisify } from "util";
 import { logger } from "../lib/logger";
 
+const execAsync = promisify(exec);
 const router: IRouter = Router();
 
-// Safe JS sandbox evaluator
+// ── JavaScript sandbox ─────────────────────────────────────────────────────────
 function runJavaScript(code: string): { stdout: string; stderr: string; exitCode: number } {
   const logs: string[] = [];
   const errors: string[] = [];
 
   const sandboxConsole = {
-    log: (...args: unknown[]) => logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')),
-    error: (...args: unknown[]) => errors.push(args.map(a => String(a)).join(' ')),
-    warn: (...args: unknown[]) => logs.push('[WARN] ' + args.map(a => String(a)).join(' ')),
-    info: (...args: unknown[]) => logs.push('[INFO] ' + args.map(a => String(a)).join(' ')),
+    log:   (...a: unknown[]) => logs.push(a.map(x => typeof x === "object" ? JSON.stringify(x, null, 2) : String(x)).join(" ")),
+    error: (...a: unknown[]) => errors.push(a.map(x => String(x)).join(" ")),
+    warn:  (...a: unknown[]) => logs.push("[WARN] " + a.map(x => String(x)).join(" ")),
+    info:  (...a: unknown[]) => logs.push("[INFO] " + a.map(x => String(x)).join(" ")),
+    table: (...a: unknown[]) => logs.push(JSON.stringify(a, null, 2)),
+    dir:   (...a: unknown[]) => logs.push(JSON.stringify(a, null, 2)),
+    time:  () => {},
+    timeEnd: () => {},
+    group: () => {},
+    groupEnd: () => {},
+    assert: (cond: boolean, ...a: unknown[]) => { if (!cond) errors.push("Assertion failed: " + a.map(String).join(" ")); },
   };
+
+  // Provide useful globals inside the sandbox
+  const sandboxDate = Date;
+  const sandboxMath = Math;
+  const sandboxJSON = JSON;
 
   try {
-    // Create sandboxed function
-    const fn = new Function('console', `
-      "use strict";
-      ${code}
-    `);
-    fn(sandboxConsole);
-    return { stdout: logs.join('\n'), stderr: errors.join('\n'), exitCode: 0 };
+    const fn = new Function(
+      "console", "Date", "Math", "JSON",
+      `"use strict";\n${code}`,
+    );
+    fn(sandboxConsole, sandboxDate, sandboxMath, sandboxJSON);
+    return { stdout: logs.join("\n"), stderr: errors.join("\n"), exitCode: errors.length ? 1 : 0 };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { stdout: logs.join('\n'), stderr: message, exitCode: 1 };
+    return { stdout: logs.join("\n"), stderr: err instanceof Error ? err.message : String(err), exitCode: 1 };
   }
 }
 
-function runBash(code: string): { stdout: string; stderr: string; exitCode: number } {
-  const lines = code.split('\n');
-  const output: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    const parts = trimmed.split(' ');
-    const cmd = parts[0];
-
-    if (cmd === 'echo') {
-      output.push(parts.slice(1).join(' ').replace(/["']/g, ''));
-    } else if (cmd === 'ls') {
-      output.push('applications/  documents/  downloads/  workspace/  screenshots/');
-    } else if (cmd === 'pwd') {
-      output.push('/home/agent');
-    } else if (cmd === 'date') {
-      output.push(new Date().toString());
-    } else if (cmd === 'whoami') {
-      output.push('agent-user');
-    } else if (cmd === 'cat') {
-      output.push(`[Reading file: ${parts[1] ?? 'unknown'}]`);
-    } else if (cmd === 'mkdir' || cmd === 'touch' || cmd === 'rm') {
-      output.push(`${cmd}: operation simulated`);
-    } else {
-      output.push(`bash: ${cmd}: command not found in sandbox`);
-    }
+// ── Real Bash via child_process ────────────────────────────────────────────────
+async function runBash(code: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  try {
+    const { stdout, stderr } = await execAsync(code, {
+      timeout: 10_000,
+      cwd: "/tmp",
+      env: {
+        PATH: process.env.PATH,
+        HOME: "/tmp",
+        USER: "agent",
+        TERM: "xterm-256color",
+        LANG: "en_US.UTF-8",
+      },
+      maxBuffer: 1024 * 1024, // 1MB
+    });
+    return { stdout: stdout || "", stderr: stderr || "", exitCode: 0 };
+  } catch (err: unknown) {
+    const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
+    return { stdout: e.stdout ?? "", stderr: e.stderr ?? e.message ?? "Execution error", exitCode: e.code ?? 1 };
   }
-
-  return { stdout: output.join('\n'), stderr: '', exitCode: 0 };
 }
 
-function runPython(code: string): { stdout: string; stderr: string; exitCode: number } {
-  const output: string[] = [];
-
-  // Parse simple Python patterns
-  const lines = code.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    const printMatch = trimmed.match(/^print\s*\((.*)\)$/);
-    if (printMatch) {
-      const expr = printMatch[1].trim();
-      const strMatch = expr.match(/^["'](.*)["']$/);
-      if (strMatch) {
-        output.push(strMatch[1]);
-      } else {
-        try {
-          // Evaluate simple expressions
-          const result = Function(`"use strict"; return (${expr})`)();
-          output.push(String(result));
-        } catch {
-          output.push(expr);
-        }
+// ── Python via child_process ────────────────────────────────────────────────────
+async function runPython(code: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  // Try python3 first, fallback to python
+  for (const bin of ["python3", "python"]) {
+    try {
+      const escaped = code.replace(/'/g, "'\"'\"'");
+      const { stdout, stderr } = await execAsync(`printf '%s' '${escaped}' | ${bin}`, {
+        timeout: 10_000,
+        cwd: "/tmp",
+        maxBuffer: 1024 * 1024,
+      });
+      return { stdout: stdout || "", stderr: stderr || "", exitCode: 0 };
+    } catch (err: unknown) {
+      const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
+      if (!e.message?.includes("not found") && !e.message?.includes("No such file")) {
+        return { stdout: e.stdout ?? "", stderr: e.stderr ?? e.message ?? "Execution error", exitCode: e.code ?? 1 };
       }
-      continue;
-    }
-
-    // Variable assignments  
-    if (trimmed.includes('=') && !trimmed.startsWith('if') && !trimmed.startsWith('while')) {
-      continue; // Silently handle assignments
     }
   }
-
   return {
-    stdout: output.join('\n') || '# Python sandbox: simple expressions evaluated\n# Full Python execution requires a Python runtime',
-    stderr: '',
-    exitCode: 0
+    stdout: "",
+    stderr: "Python not available in this environment. Use bash or JavaScript.",
+    exitCode: 127,
   };
+}
+
+// ── TypeScript (transpile → JS) ────────────────────────────────────────────────
+function runTypeScript(code: string): { stdout: string; stderr: string; exitCode: number } {
+  // Strip type annotations with basic regex for demos, then run as JS
+  const jsCode = code
+    .replace(/:\s*(string|number|boolean|any|unknown|never|void|null|undefined|object)(\[\])?/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/^(export\s+)?(interface|type)\s+\w+[^{]*\{[^}]*\}/gm, "")
+    .replace(/^export\s+/gm, "");
+  return runJavaScript(`// TypeScript → JavaScript\n${jsCode}`);
 }
 
 router.post("/code/run", async (req, res) => {
-  const { language, code, agentId } = req.body;
-
+  const { language, code } = req.body;
   if (!language || !code) {
     res.status(400).json({ error: "language and code are required" });
     return;
   }
 
-  const startTime = Date.now();
+  const t0 = Date.now();
   let result: { stdout: string; stderr: string; exitCode: number };
 
   try {
     switch (language) {
-      case 'javascript':
-        result = runJavaScript(code);
-        break;
-      case 'bash':
-        result = runBash(code);
-        break;
-      case 'python':
-        result = runPython(code);
-        break;
-      default:
-        result = { stdout: '', stderr: `Unsupported language: ${language}`, exitCode: 1 };
+      case "javascript": result = runJavaScript(code);          break;
+      case "typescript": result = runTypeScript(code);          break;
+      case "bash":       result = await runBash(code);          break;
+      case "python":     result = await runPython(code);        break;
+      default:           result = { stdout: "", stderr: `Unsupported language: ${language}`, exitCode: 1 };
     }
   } catch (err) {
     logger.error({ err, language }, "Code execution error");
-    result = { stdout: '', stderr: 'Internal execution error', exitCode: 1 };
+    result = { stdout: "", stderr: "Internal execution error", exitCode: 1 };
   }
 
-  const executionTime = Date.now() - startTime;
-
-  res.json({
-    ...result,
-    executionTime,
-    success: result.exitCode === 0,
-  });
+  res.json({ ...result, executionTime: Date.now() - t0, success: result.exitCode === 0 });
 });
 
 export default router;
