@@ -1,0 +1,115 @@
+name: Deploy Agent OS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  RAILWAY_PROJECT_ID: 972e9d01-0bc1-4068-a3ac-fa13a1b39a76
+
+jobs:
+  deploy-api:
+    name: Deploy API → Railway
+    runs-on: ubuntu-latest
+    outputs:
+      api_url: ${{ steps.get_url.outputs.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy API to Railway
+        run: railway up --service api-server --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: 972e9d01-0bc1-4068-a3ac-fa13a1b39a76
+
+      - name: Get Railway API URL
+        id: get_url
+        run: |
+          sleep 10
+          URL=$(railway domain --service api-server 2>/dev/null | grep -oP 'https?://\S+' | head -1 || echo "")
+          if [ -z "$URL" ]; then
+            URL=$(railway status --service api-server 2>/dev/null | grep -oP 'https?://\S+' | head -1 || echo "")
+          fi
+          echo "api_url=${URL}" >> $GITHUB_OUTPUT
+          echo "Railway API URL: ${URL}"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: 972e9d01-0bc1-4068-a3ac-fa13a1b39a76
+
+  deploy-frontend:
+    name: Deploy Frontend → Netlify
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @workspace/agent-os run build
+        env:
+          BASE_PATH: /
+          NODE_ENV: production
+
+      - name: Inject API proxy + SPA redirect
+        run: |
+          API_URL="${{ needs.deploy-api.outputs.api_url }}"
+          REDIRECTS_FILE="artifacts/agent-os/dist/public/_redirects"
+          if [ -n "$API_URL" ] && [ "$API_URL" != "https://" ]; then
+            echo "/api/* ${API_URL}/api/:splat 200" > "$REDIRECTS_FILE"
+            echo "/* /index.html 200" >> "$REDIRECTS_FILE"
+            echo "API proxy → ${API_URL}"
+          else
+            echo "/* /index.html 200" > "$REDIRECTS_FILE"
+            echo "Warning: Railway URL not found — API proxy skipped"
+          fi
+
+      - name: Deploy to Netlify
+        run: |
+          npx netlify-cli@latest deploy \
+            --prod \
+            --dir=artifacts/agent-os/dist/public \
+            --message="Agent OS · commit ${GITHUB_SHA::7}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo " Agent OS deployed"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo " Frontend  → Netlify"
+          echo " API       → Railway (project 972e9d01)"
+          echo " API URL   → ${{ needs.deploy-api.outputs.api_url }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
