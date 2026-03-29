@@ -5,6 +5,13 @@ import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
 
+async function broadcast(event: Record<string, unknown>) {
+  try {
+    const { broadcast: bc } = await import("../index.js");
+    bc(event);
+  } catch { /* WS not yet ready */ }
+}
+
 function serializeTask(task: typeof tasksTable.$inferSelect) {
   return {
     ...task,
@@ -45,7 +52,13 @@ router.post("/tasks", async (req, res) => {
     progress: 0,
   }).returning();
 
-  // Simulate async task execution
+  await broadcast({
+    type: "task:created",
+    message: `Task "${name}" dispatched (${formattedSteps.length} steps)`,
+    taskId: id,
+  });
+
+  // Run async task execution
   simulateTaskExecution(id, formattedSteps.length).catch(() => {});
 
   res.status(201).json(serializeTask(task));
@@ -66,7 +79,9 @@ async function simulateTaskExecution(taskId: string, totalSteps: number) {
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
     const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId));
     if (!task) break;
-    const steps = task.steps.map((s, idx) => idx === i ? { ...s, status: "completed", result: "Success" } : s);
+    const steps = task.steps.map((s, idx) =>
+      idx === i ? { ...s, status: "completed", result: "Success" } : s,
+    );
     const progress = ((i + 1) / totalSteps) * 100;
     const isLast = i === totalSteps - 1;
     await db.update(tasksTable).set({
@@ -75,6 +90,15 @@ async function simulateTaskExecution(taskId: string, totalSteps: number) {
       status: isLast ? "completed" : "running",
       completedAt: isLast ? new Date() : null,
     }).where(eq(tasksTable.id, taskId));
+
+    await broadcast({
+      type: isLast ? "task:completed" : "task:step_done",
+      message: isLast
+        ? `Task "${task.name}" completed`
+        : `Step ${i + 1}/${totalSteps} complete`,
+      taskId,
+      progress,
+    });
   }
 }
 

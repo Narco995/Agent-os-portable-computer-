@@ -64,30 +64,40 @@ async function runBash(code: string): Promise<{ stdout: string; stderr: string; 
   }
 }
 
-// ── Python via child_process ────────────────────────────────────────────────────
+// ── Python via temp file (safe for any code content) ───────────────────────
 async function runPython(code: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  // Try python3 first, fallback to python
-  for (const bin of ["python3", "python"]) {
-    try {
-      const escaped = code.replace(/'/g, "'\"'\"'");
-      const { stdout, stderr } = await execAsync(`printf '%s' '${escaped}' | ${bin}`, {
-        timeout: 10_000,
-        cwd: "/tmp",
-        maxBuffer: 1024 * 1024,
-      });
-      return { stdout: stdout || "", stderr: stderr || "", exitCode: 0 };
-    } catch (err: unknown) {
-      const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
-      if (!e.message?.includes("not found") && !e.message?.includes("No such file")) {
-        return { stdout: e.stdout ?? "", stderr: e.stderr ?? e.message ?? "Execution error", exitCode: e.code ?? 1 };
+  const { writeFile, unlink } = await import("fs/promises");
+  const { randomUUID } = await import("crypto");
+  const tmpFile = `/tmp/agent_os_${randomUUID()}.py`;
+
+  try {
+    await writeFile(tmpFile, code, "utf8");
+
+    for (const bin of ["python3", "python"]) {
+      try {
+        const { stdout, stderr } = await execAsync(`${bin} ${tmpFile}`, {
+          timeout: 10_000,
+          cwd: "/tmp",
+          maxBuffer: 1024 * 1024,
+          env: { PATH: process.env.PATH, HOME: "/tmp", PYTHONDONTWRITEBYTECODE: "1" },
+        });
+        return { stdout: stdout || "", stderr: stderr || "", exitCode: 0 };
+      } catch (err: unknown) {
+        const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
+        if (!e.message?.includes("not found") && !e.message?.includes("No such file")) {
+          return { stdout: e.stdout ?? "", stderr: e.stderr ?? e.message ?? "Execution error", exitCode: e.code ?? 1 };
+        }
       }
     }
+
+    return {
+      stdout: "",
+      stderr: "Python not available in this environment. Use bash or JavaScript.",
+      exitCode: 127,
+    };
+  } finally {
+    unlink(tmpFile).catch(() => {});
   }
-  return {
-    stdout: "",
-    stderr: "Python not available in this environment. Use bash or JavaScript.",
-    exitCode: 127,
-  };
 }
 
 // ── TypeScript (transpile → JS) ────────────────────────────────────────────────

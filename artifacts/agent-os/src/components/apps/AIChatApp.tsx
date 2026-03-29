@@ -53,11 +53,19 @@ export function AIChatApp() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [modelInfo, setModelInfo] = useState<{ provider: string; model: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { loadConversations(); }, []);
+  useEffect(() => {
+    loadConversations();
+    // Fetch provider/model info from server
+    fetch(`${API}/openai/model`)
+      .then(r => r.json())
+      .then(setModelInfo)
+      .catch(() => {});
+  }, []);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, streamContent]);
 
   async function loadConversations() {
@@ -214,7 +222,9 @@ export function AIChatApp() {
           <div className="p-2 border-t" style={{ borderColor: 'rgba(0,212,255,0.08)' }}>
             <div className="flex items-center gap-1.5 px-2 py-1.5 rounded text-[9px] font-mono" style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: 'rgba(168,85,247,0.8)' }}>
               <Sparkles size={9} />
-              <span>GPT-5.2</span>
+              <span title={modelInfo ? `Provider: ${modelInfo.provider}` : ''}>
+                {modelInfo ? modelInfo.model : '…'}
+              </span>
             </div>
           </div>
         </div>
@@ -253,7 +263,7 @@ export function AIChatApp() {
                 </div>
                 <h3 className="text-base font-semibold text-white mb-1">Agent OS AI</h3>
                 <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  Powered by GPT-5.2 · Full markdown support<br />
+                  {modelInfo ? `${modelInfo.model} (${modelInfo.provider})` : 'AI-Powered'} · Full markdown support<br />
                   Knows everything about this system
                 </p>
               </div>
@@ -374,7 +384,7 @@ export function AIChatApp() {
             </button>
           </div>
           <div className="text-center mt-1.5 text-[9px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
-            Agent OS AI · GPT-5.2 · Responses may vary
+            Agent OS AI · {modelInfo ? `${modelInfo.model} via ${modelInfo.provider}` : 'Connecting…'} · Responses may vary
           </div>
         </div>
       </div>
