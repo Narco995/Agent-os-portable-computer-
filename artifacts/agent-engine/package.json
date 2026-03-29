@@ -1,0 +1,6 @@
+{
+  "name": "@agent-os/agent-engine",
+  "version": "2.0.0",
+  "private": true,
+  "description": "FastAPI + LangGraph agent runtime for Agent-OS v2.0"
+}

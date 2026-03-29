@@ -1,0 +1,328 @@
+version: "3.8"
+
+# ============================================================================
+# Agent-OS v2.0 Docker Compose Stack
+# ============================================================================
+# Services:
+# - api (FastAPI agent engine)
+# - frontend (Next.js 15 SSR)
+# - postgres (Neon local equivalent)
+# - redis (state & caching)
+# - qdrant (vector embeddings)
+# - minio (S3-compatible file storage)
+# - prometheus (metrics)
+# - grafana (monitoring dashboard)
+#
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose logs -f api         # Watch logs
+#   docker-compose down -v             # Stop and remove volumes
+#
+# Volumes:
+#   - postgres_data: Persistent PostgreSQL data
+#   - redis_data: Persistent Redis snapshots
+#   - qdrant_data: Persistent Qdrant vector DB
+#   - minio_data: S3-compatible file storage
+#
+# Networks:
+#   - agent-os-net: Internal service communication
+#
+# ============================================================================
+
+services:
+  # ========================================================================
+  # API: FastAPI + LangGraph Agent Engine
+  # ========================================================================
+  api:
+    build:
+      context: ./artifacts/agent-engine
+      dockerfile: Dockerfile
+    container_name: agent-os-api
+    restart: unless-stopped
+    expose:
+      - "8000"
+    ports:
+      - "127.0.0.1:8000:8000"  # Localhost only
+    environment:
+      # LLM Configuration
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-sk-test}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+
+      # Database Configuration
+      DATABASE_URL: postgresql://agent:password@postgres:5432/agent_os
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+
+      # Observability
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      LOG_LEVEL: INFO
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+    networks:
+      - agent-os-net
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    volumes:
+      - ./artifacts/agent-engine/src:/app/src:ro  # Mount code for hot reload
+      - /app/__pycache__  # Exclude cache
+
+  # ========================================================================
+  # Frontend: Next.js 15 with React Server Components
+  # ========================================================================
+  frontend:
+    build:
+      context: ./artifacts/agent-os
+      dockerfile: Dockerfile
+    container_name: agent-os-frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    ports:
+      - "127.0.0.1:3000:3000"  # Localhost only
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      API_ENDPOINT: http://api:8000  # Internal service URL
+      NODE_ENV: development  # Change to production for prod
+      LOG_LEVEL: info
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    networks:
+      - agent-os-net
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    volumes:
+      - ./artifacts/agent-os/src:/app/src:ro  # Mount code for hot reload
+      - /app/.next
+      - /app/node_modules
+
+  # ========================================================================
+  # PostgreSQL: Primary Data Store
+  # ========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: agent-os-postgres
+    restart: unless-stopped
+    expose:
+      - "5432"
+    ports:
+      - "127.0.0.1:5432:5432"  # Local connection for debugging
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: password  # CHANGE IN PRODUCTION
+      POSTGRES_DB: agent_os
+      POSTGRES_INITDB_ARGS: --encoding=UTF8
+
+    networks:
+      - agent-os-net
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agent_os"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # Schema init
+
+  # ========================================================================
+  # Redis: State, Caching, Rate Limiting
+  # ========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: agent-os-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - "--appendonly"
+      - "yes"
+      - "--requirepass"
+      - "password"  # CHANGE IN PRODUCTION
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379"  # Local connection for debugging
+    networks:
+      - agent-os-net
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    volumes:
+      - redis_data:/data
+
+  # ========================================================================
+  # Qdrant: Vector Database for Embeddings & RAG
+  # ========================================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: agent-os-qdrant
+    restart: unless-stopped
+    expose:
+      - "6333"  # REST API
+      - "6334"  # gRPC
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    environment:
+      QDRANT_API_KEY: qdrant-key  # CHANGE IN PRODUCTION
+
+    networks:
+      - agent-os-net
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  # ========================================================================
+  # MinIO: S3-Compatible File Storage
+  # ========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: agent-os-minio
+    restart: unless-stopped
+    command: server /minio_data --console-address ":9001"
+    expose:
+      - "9000"  # S3 API
+      - "9001"  # Console
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin  # CHANGE IN PRODUCTION
+      MINIO_REGION: us-east-1
+
+    networks:
+      - agent-os-net
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+    volumes:
+      - minio_data:/minio_data
+
+  # ========================================================================
+  # Prometheus: Metrics Collection
+  # ========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agent-os-prometheus
+    restart: unless-stopped
+    expose:
+      - "9090"
+    ports:
+      - "127.0.0.1:9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    networks:
+      - agent-os-net
+
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  # ========================================================================
+  # Grafana: Monitoring Dashboard
+  # ========================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agent-os-grafana
+    restart: unless-stopped
+    expose:
+      - "3001"
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin  # CHANGE IN PRODUCTION
+      GF_SERVER_ROOT_URL: http://localhost:3001
+    networks:
+      - agent-os-net
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+  # ========================================================================
+  # OpenTelemetry Collector: Centralized Observability
+  # ========================================================================
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: agent-os-otel
+    restart: unless-stopped
+    expose:
+      - "4318"  # HTTP OTLP receiver
+      - "4317"  # gRPC OTLP receiver
+    ports:
+      - "127.0.0.1:4318:4318"
+    command:
+      - --config=/etc/otel-collector-config.yml
+    networks:
+      - agent-os-net
+
+    volumes:
+      - ./observability/otel-config.yml:/etc/otel-collector-config.yml:ro
+
+# ============================================================================
+# Named Volumes
+# ============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  minio_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  agent-os-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
