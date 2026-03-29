@@ -1,118 +1,159 @@
 import React from 'react';
-import { format } from 'date-fns';
-import { useOSStore, APPS, AppId } from '@/store/os-store';
 import {
-  SquareTerminal, Globe, Activity, Cpu, Code, Command,
-  LayoutGrid, MonitorPlay, Bot, FolderOpen, Terminal, Brain, ListChecks,
+  SquareTerminal, Globe, Activity, Cpu, Code,
+  Bot, FolderOpen, Terminal, Brain, ListChecks,
+  Zap, FlaskConical, PanelRight, Monitor
 } from 'lucide-react';
-import { clsx } from 'clsx';
+import { useOSStore, AppId, APPS } from '@/store/os-store';
 
-const getIcon = (iconName: string) => {
-  switch (iconName) {
-    case 'SquareTerminal': return <SquareTerminal size={18} />;
-    case 'Globe':          return <Globe size={18} />;
-    case 'Activity':       return <Activity size={18} />;
-    case 'Cpu':            return <Cpu size={18} />;
-    case 'Code':           return <Code size={18} />;
-    case 'Bot':            return <Bot size={18} />;
-    case 'FolderOpen':     return <FolderOpen size={18} />;
-    case 'Terminal':       return <Terminal size={18} />;
-    case 'Brain':          return <Brain size={18} />;
-    case 'ListChecks':     return <ListChecks size={18} />;
-    default:               return <SquareTerminal size={18} />;
-  }
+const APP_ICONS: Record<string, React.ElementType> = {
+  terminal:    SquareTerminal,
+  browser:     Globe,
+  monitor:     Activity,
+  router:      Cpu,
+  editor:      Code,
+  aichat:      Bot,
+  filemanager: FolderOpen,
+  codeide:     Terminal,
+  memory:      Brain,
+  tasks:       ListChecks,
+  llmrouter:   Zap,
+  agentforge:  FlaskConical,
 };
 
 export function Taskbar() {
-  const [time, setTime] = React.useState(new Date());
-  const {
-    windows, openApp, toggleMinimize, activeWindow,
-    agentPanelOpen, computerPanelOpen, toggleAgentPanel, toggleComputerPanel,
-  } = useOSStore();
+  const { windows, openApp, focusApp, toggleMinimize, agentPanelOpen, computerPanelOpen, toggleAgentPanel, toggleComputerPanel, engineConnected, totalCost } = useOSStore();
 
-  React.useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const openWindows = (Object.values(windows) as any[]).filter((w) => w.isOpen);
 
   return (
-    <div className="h-14 bg-background/90 backdrop-blur-xl border-t border-white/10 flex items-center justify-between px-3 z-[9999] relative overflow-x-auto">
-      <div className="flex items-center gap-1 shrink-0">
-        <button className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center hover:bg-primary/30 hover:scale-105 transition-all glow-border mr-1">
-          <Command size={18} />
-        </button>
+    <div
+      className="relative z-50 h-14 flex items-center px-3 gap-2 border-t shrink-0"
+      style={{
+        background: 'rgba(5,5,16,0.92)',
+        backdropFilter: 'blur(20px)',
+        borderColor: 'rgba(0,212,255,0.12)',
+      }}
+    >
+      {/* OS Logo */}
+      <div
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg mr-1 shrink-0"
+        style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)' }}
+      >
+        <Monitor size={14} style={{ color: 'var(--neon-cyan)' }} />
+        <span className="text-[10px] font-bold font-mono" style={{ color: 'var(--neon-cyan)' }}>AGENT·OS</span>
+        <span className="text-[8px] font-mono" style={{ color: 'rgba(0,212,255,0.4)' }}>v2</span>
+      </div>
 
-        <div className="w-px h-8 bg-white/10 mx-1" />
-
-        {Object.values(APPS).map((app) => {
-          const win = windows[app.id];
-          const isActive = activeWindow === app.id;
-          const isRunning = win.isOpen;
-
+      {/* Open windows */}
+      <div className="flex items-center gap-1 flex-1 overflow-x-auto min-w-0">
+        {openWindows.length === 0 && (
+          <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            Double-click desktop icons to open apps
+          </span>
+        )}
+        {openWindows.map((w) => {
+          const Icon = APP_ICONS[w.id] ?? Code;
+          const app = APPS[w.id as AppId];
+          const badge = app?.badge;
           return (
             <button
-              key={app.id}
+              key={w.id}
               onClick={() => {
-                if (!isRunning) openApp(app.id);
-                else toggleMinimize(app.id);
+                if (w.isMinimized) {
+                  focusApp(w.id);
+                } else {
+                  toggleMinimize(w.id);
+                }
               }}
-              className={clsx(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group",
-                isActive
-                  ? 'bg-white/10 text-white'
-                  : isRunning
-                    ? 'bg-white/5 text-gray-400 hover:text-white'
-                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-300',
-              )}
-              title={app.title}
+              onDoubleClick={() => openApp(w.id)}
+              title={app?.title}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all shrink-0 relative"
+              style={{
+                background: w.isMinimized ? 'rgba(255,255,255,0.04)' : 'rgba(0,212,255,0.1)',
+                border: `1px solid ${w.isMinimized ? 'rgba(255,255,255,0.08)' : 'rgba(0,212,255,0.25)'}`,
+                color: w.isMinimized ? 'rgba(255,255,255,0.4)' : 'var(--neon-cyan)',
+                maxWidth: '130px',
+              }}
             >
-              {getIcon(app.icon)}
-              {isRunning && (
-                <div className={clsx(
-                  'absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full transition-all',
-                  isActive ? 'bg-primary shadow-[0_0_6px_var(--color-primary)]' : 'bg-white/50',
-                )} />
+              <Icon size={12} />
+              <span className="text-[10px] font-medium truncate">{app?.title}</span>
+              {badge && (
+                <span
+                  className="text-[7px] px-1 rounded font-bold leading-none"
+                  style={{ background: badge === 'NEW' ? 'rgba(0,255,136,0.2)' : 'rgba(0,212,255,0.2)', color: badge === 'NEW' ? 'rgba(0,255,136,0.9)' : 'var(--neon-cyan)' }}
+                >
+                  {badge}
+                </span>
               )}
-              <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/90 border border-white/10 rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                {app.title}
-              </span>
+              {/* Active indicator dot */}
+              {!w.isMinimized && (
+                <div
+                  className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                  style={{ background: 'var(--neon-cyan)' }}
+                />
+              )}
             </button>
           );
         })}
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={toggleAgentPanel}
-          className={clsx(
-            'px-2 h-9 rounded-lg flex items-center gap-1.5 text-xs font-semibold transition-all border',
-            agentPanelOpen
-              ? 'bg-accent/20 text-accent border-accent/50 glow-border-accent'
-              : 'bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-white',
-          )}
+      {/* Right side: cost, panels */}
+      <div className="flex items-center gap-2 shrink-0 ml-auto">
+        {/* Session cost */}
+        <div
+          className="hidden sm:flex items-center gap-1 px-2 py-1 rounded"
+          style={{ background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.12)' }}
         >
-          <LayoutGrid size={14} />
-          <span className="hidden md:inline">Agent Ctrl</span>
-        </button>
+          <span className="text-[8px] font-mono" style={{ color: 'rgba(0,255,136,0.5)' }}>$</span>
+          <span className="text-[10px] font-mono" style={{ color: 'rgba(0,255,136,0.7)' }}>
+            {totalCost.toFixed(4)}
+          </span>
+        </div>
 
+        {/* Engine dot */}
+        <div
+          className="flex items-center gap-1 px-2 py-1 rounded"
+          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: engineConnected ? 'var(--neon-green)' : 'rgba(255,165,0,0.8)',
+              boxShadow: `0 0 4px ${engineConnected ? 'var(--neon-green)' : 'rgba(255,165,0,0.8)'}`,
+            }}
+          />
+          <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            {engineConnected ? 'API' : 'OFF'}
+          </span>
+        </div>
+
+        {/* Panel toggles */}
         <button
           onClick={toggleComputerPanel}
-          className={clsx(
-            'px-2 h-9 rounded-lg flex items-center gap-1.5 text-xs font-semibold transition-all border',
-            computerPanelOpen
-              ? 'bg-primary/20 text-primary border-primary/50 glow-border'
-              : 'bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-white',
-          )}
+          className="p-2 rounded-lg transition-all"
+          title="Computer Use Panel"
+          style={{
+            background: computerPanelOpen ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${computerPanelOpen ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.08)'}`,
+            color: computerPanelOpen ? 'rgba(168,85,247,0.9)' : 'rgba(255,255,255,0.4)',
+          }}
         >
-          <MonitorPlay size={14} />
-          <span className="hidden md:inline">OS View</span>
+          <Monitor size={14} />
         </button>
 
-        <div className="w-px h-8 bg-white/10" />
-
-        <div className="px-2 h-9 rounded-lg bg-black/50 border border-white/5 flex items-center justify-center font-mono text-sm text-gray-300 tabular-nums">
-          {format(time, 'HH:mm:ss')}
-        </div>
+        <button
+          onClick={toggleAgentPanel}
+          className="p-2 rounded-lg transition-all"
+          title="Agent Control Panel"
+          style={{
+            background: agentPanelOpen ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${agentPanelOpen ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+            color: agentPanelOpen ? 'var(--neon-cyan)' : 'rgba(255,255,255,0.4)',
+          }}
+        >
+          <PanelRight size={14} />
+        </button>
       </div>
     </div>
   );
