@@ -5,6 +5,14 @@ import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
 
+// Broadcast helper — imported lazily to avoid circular dep with index.ts
+async function broadcast(event: Record<string, unknown>) {
+  try {
+    const { broadcast: bc } = await import("../index.js");
+    bc(event);
+  } catch { /* WS not yet ready */ }
+}
+
 router.get("/agents", async (_req, res) => {
   const agents = await db.select().from(agentsTable).orderBy(agentsTable.connectedAt);
   res.json(agents.map(a => ({
@@ -28,6 +36,14 @@ router.post("/agents", async (req, res) => {
     capabilities,
     status: "active",
   }).returning();
+
+  await broadcast({
+    type: "agent:registered",
+    message: `Agent "${name}" connected`,
+    agentId: id,
+    capabilities,
+  });
+
   res.status(201).json({
     ...agent,
     connectedAt: agent.connectedAt.toISOString(),
@@ -37,7 +53,14 @@ router.post("/agents", async (req, res) => {
 
 router.delete("/agents/:agentId", async (req, res) => {
   const { agentId } = req.params;
-  await db.delete(agentsTable).where(eq(agentsTable.id, agentId));
+  const [removed] = await db.delete(agentsTable).where(eq(agentsTable.id, agentId)).returning();
+
+  await broadcast({
+    type: "agent:unregistered",
+    message: `Agent "${removed?.name ?? agentId}" disconnected`,
+    agentId,
+  });
+
   res.json({ success: true, message: "Agent unregistered" });
 });
 

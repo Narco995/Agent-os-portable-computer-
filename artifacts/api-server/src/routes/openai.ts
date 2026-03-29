@@ -1,13 +1,13 @@
 import { Router, type IRouter } from "express";
 import { db, conversations, messages } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai, provider } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
 // System prompt for Agent OS AI assistant
-const SYSTEM_PROMPT = `You are an intelligent AI assistant running inside Agent OS — a portable, AI-controllable virtual computer system. 
+const SYSTEM_PROMPT = `You are an intelligent AI assistant running inside Agent OS — a portable, AI-controllable virtual computer system.
 
 You have access to the entire Agent OS environment:
 - Virtual filesystem for reading/writing files
@@ -22,10 +22,15 @@ You assist both human users and external AI agents. Be concise, technical, and h
 
 When an external AI agent connects, you help it understand:
 - How to register via POST /api/agents
-- How to execute commands via POST /api/commands  
+- How to execute commands via POST /api/commands
 - Available command types: click, type, terminal, screenshot, open_app, navigate
 - WebSocket endpoint: /api/ws for real-time events
 - Memory API: POST /api/memory for persistent knowledge storage`;
+
+// Expose current provider/model to frontend
+router.get("/openai/model", (_req, res) => {
+  res.json({ provider: provider.name, model: provider.model });
+});
 
 router.get("/openai/conversations", async (_req, res) => {
   const convs = await db.select().from(conversations).orderBy(desc(conversations.createdAt)).limit(50);
@@ -74,16 +79,23 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
   if (!content) { res.status(400).json({ error: "content is required" }); return; }
 
-  // Ensure conversation exists
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, conversationId));
   if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
 
   // Save user message
   await db.insert(messages).values({ conversationId, role: "user", content });
 
-  // Get chat history
-  const history = await db.select().from(messages).where(eq(messages.conversationId, conversationId));
-  const chatMessages = history.map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+  // Get chat history — limit to last 20 messages to keep tokens manageable
+  const history = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(desc(messages.createdAt))
+    .limit(20);
+
+  const chatMessages = history
+    .reverse()
+    .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
 
   // Setup SSE
   res.setHeader("Content-Type", "text/event-stream");
@@ -96,8 +108,8 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
+      model: provider.model,
+      max_completion_tokens: 4096,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...chatMessages,
@@ -116,11 +128,12 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     // Save assistant response
     await db.insert(messages).values({ conversationId, role: "assistant", content: fullResponse });
 
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true, model: provider.model, provider: provider.name })}\n\n`);
     res.end();
   } catch (err) {
-    logger.error({ err }, "OpenAI streaming error");
-    res.write(`data: ${JSON.stringify({ error: "AI service error", done: true })}\n\n`);
+    logger.error({ err, provider: provider.name, model: provider.model }, "AI streaming error");
+    const errorMsg = err instanceof Error ? err.message : "AI service error";
+    res.write(`data: ${JSON.stringify({ error: errorMsg, done: true })}\n\n`);
     res.end();
   }
 });

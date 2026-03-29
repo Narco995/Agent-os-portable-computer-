@@ -17,7 +17,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild for API, Vite for frontend
-- **AI**: OpenAI via Replit AI Integration proxy (gpt-5.2)
+- **AI**: OpenRouter (built-in key, routes to 200+ models) — default model: `meta-llama/llama-3.3-70b-instruct`. Override with `AI_PROVIDER` + `AI_MODEL` env vars. Supports OpenAI, Groq, Google AI Studio, Ollama as fallbacks.
 - **State Management**: Zustand (frontend)
 - **UI**: React + Vite + Tailwind CSS + Radix UI
 
