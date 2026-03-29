@@ -7,11 +7,8 @@
   BASE_PATH = "/"
   PORT = "3000"
 
-[[redirects]]
-  from = "/api/*"
-  to = "https://web-production-8e048.up.railway.app/api/:splat"
-  status = 200
-  force = true
+# API proxy URL injected dynamically by GitHub Actions (.github/workflows/deploy.yml)
+# Do not hardcode Railway URL here — it breaks on redeploys
 
 [[redirects]]
   from = "/*"
