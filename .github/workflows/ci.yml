@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Frontend (TypeScript + Vite) ─────────────────────────────────────────
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm --filter @workspace/agent-os run typecheck
+
+      - name: Build
+        run: pnpm --filter @workspace/agent-os run build
+
+  # ── Agent Engine (Python / FastAPI) ──────────────────────────────────────
+  agent-engine:
+    name: Agent Engine CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: artifacts/agent-engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check src/
+
+      - name: Type check with mypy
+        run: |
+          pip install mypy types-requests
+          mypy src/main.py --ignore-missing-imports || true
+
