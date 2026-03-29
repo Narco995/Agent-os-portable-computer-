@@ -84,15 +84,13 @@ jobs:
       - name: Inject API proxy + SPA redirect
         run: |
           API_URL="${{ needs.deploy-api.outputs.api_url }}"
+          FALLBACK_URL="https://web-production-8e048.up.railway.app"
+          FINAL_URL="${API_URL:-$FALLBACK_URL}"
+          if [ "$FINAL_URL" = "https://" ]; then FINAL_URL="$FALLBACK_URL"; fi
           REDIRECTS_FILE="artifacts/agent-os/dist/public/_redirects"
-          if [ -n "$API_URL" ] && [ "$API_URL" != "https://" ]; then
-            echo "/api/* ${API_URL}/api/:splat 200" > "$REDIRECTS_FILE"
-            echo "/* /index.html 200" >> "$REDIRECTS_FILE"
-            echo "API proxy → ${API_URL}"
-          else
-            echo "/* /index.html 200" > "$REDIRECTS_FILE"
-            echo "Warning: Railway URL not found — API proxy skipped"
-          fi
+          echo "/api/* ${FINAL_URL}/api/:splat 200" > "$REDIRECTS_FILE"
+          echo "/* /index.html 200" >> "$REDIRECTS_FILE"
+          echo "API proxy → ${FINAL_URL}"
 
       - name: Deploy to Netlify
         run: |
