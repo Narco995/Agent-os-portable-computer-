@@ -7,8 +7,8 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Repo root → artifacts/agent-os/dist/public
-const STATIC_DIR = path.resolve(__dirname, "../../../agent-os/dist/public");
+// artifacts/api-server/dist/ → ../../ → artifacts/ → agent-os/dist/public
+const STATIC_DIR = path.resolve(__dirname, "../../agent-os/dist/public");
 
 const app: Express = express();
 
