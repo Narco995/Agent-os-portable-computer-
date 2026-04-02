@@ -12,7 +12,9 @@ export function AgentControlPanel() {
   const queryClient = useQueryClient();
   const { mutate: register, isPending: isRegistering } = useRegisterAgent();
   const { mutate: execute, isPending: isExecuting } = useExecuteCommand();
-  const { data: agents } = useListAgents();
+  const { data: agents } = useListAgents({
+    query: { queryKey: ['/api/agents'], refetchInterval: 5000 }
+  });
   const { data: commands } = useListCommands({
     query: { queryKey: ['/api/commands'], refetchInterval: 3000 }
   });

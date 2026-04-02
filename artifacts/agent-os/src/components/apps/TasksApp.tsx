@@ -121,7 +121,9 @@ export function TasksApp() {
   const { data: tasks, isLoading, refetch, isFetching } = useListTasks({
     query: { queryKey: ['/api/tasks'], refetchInterval: 2000 }
   });
-  const { data: agents } = useListAgents();
+  const { data: agents } = useListAgents({
+    query: { queryKey: ['/api/agents'], refetchInterval: 5000 }
+  });
   const { mutate: createTask, isPending } = useCreateTask();
 
   const [showCreate, setShowCreate] = useState(false);

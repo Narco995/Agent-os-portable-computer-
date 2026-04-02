@@ -13,4 +13,16 @@ export interface SystemState {
   uptime: number;
   connectedAgents: number;
   totalCommands: number;
+  loadAverage?: number[];
+  usedMemoryGB?: number;
+  totalMemoryGB?: number;
+  freeMemoryGB?: number;
+  cpuModel?: string;
+  cpuCores?: number;
+  cpuSpeedMHz?: number;
+  platform?: string;
+  arch?: string;
+  hostname?: string;
+  nodeVersion?: string;
+  processUptime?: number;
 }
