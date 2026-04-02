@@ -29,7 +29,9 @@ function StatCard({
 }
 
 export function HardwareMonitorApp() {
-  const { data: state, isLoading, isError } = useGetSystemState({ query: { refetchInterval: 2000 } });
+  const { data: state, isLoading, isError } = useGetSystemState({
+    query: { queryKey: ['/api/system/state'], refetchInterval: 2000 }
+  });
   const { isConnected } = useWebSocket();
   const [history, setHistory] = React.useState<HistoryPoint[]>([]);
 
