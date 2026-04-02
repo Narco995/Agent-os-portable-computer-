@@ -31,26 +31,16 @@ jobs:
 
       - name: Deploy to Railway
         run: |
-          echo "=== Debug: Railway Token ==="
-          echo "Token length: ${#RAILWAY_TOKEN}"
-          echo "Token preview: ${RAILWAY_TOKEN:0:4}...${RAILWAY_TOKEN: -4}"
-          
-          echo "=== Debug: Railway Project ID ==="
-          echo "Project ID: $RAILWAY_PROJECT_ID"
-          
-          echo "=== Authenticate with Railway ==="
-          railway whoami || echo "Railway auth failed"
-          
           echo "=== Deploying to Railway ==="
-          railway up --service api-server --detach --project $RAILWAY_PROJECT_ID 2>&1
+          railway up --service api-server --environment production --detach --project $RAILWAY_PROJECT_ID 2>&1
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ env.RAILWAY_PROJECT_ID }}
 
       - name: Get deployed URL
         run: |
-          sleep 15
-          URL=$(railway domain --service api-server 2>/dev/null | grep -oP 'https?://\S+' | head -1 || echo "check Railway dashboard")
+          sleep 20
+          URL=$(railway domain --service api-server --environment production 2>/dev/null | grep -oP 'https?://\S+' | head -1 || echo "check Railway dashboard")
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo " Agent OS deployed → Railway"
           echo " URL → ${URL}"
