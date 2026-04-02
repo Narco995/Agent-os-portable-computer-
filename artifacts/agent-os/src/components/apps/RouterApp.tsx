@@ -39,8 +39,12 @@ export function RouterApp() {
   const { isConnected, lastEvent, sendMessage } = useWebSocket();
   const queryClient = useQueryClient();
 
-  const { data: agents, isLoading: agentsLoading } = useListAgents({ query: { refetchInterval: 5000 } });
-  const { data: tasks } = useListTasks({ query: { refetchInterval: 3000 } });
+  const { data: agents, isLoading: agentsLoading } = useListAgents({
+    query: { queryKey: ['/api/agents'], refetchInterval: 5000 }
+  });
+  const { data: tasks } = useListTasks({
+    query: { queryKey: ['/api/tasks'], refetchInterval: 3000 }
+  });
   const { mutate: unregister } = useUnregisterAgent();
   const { mutate: registerAgent, isPending: isRegistering } = useRegisterAgent();
   const { mutate: createTask, isPending: isCreatingTask } = useCreateTask();

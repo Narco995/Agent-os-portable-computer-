@@ -655,6 +655,56 @@ components:
           type: number
         totalCommands:
           type: number
+        totalMemoryGB:
+          type: number
+        freeMemoryGB:
+          type: number
+        usedMemoryGB:
+          type: number
+        processUptime:
+          type: number
+        platform:
+          type: string
+        arch:
+          type: string
+        hostname:
+          type: string
+        nodeVersion:
+          type: string
+        cpuModel:
+          type: string
+        cpuCores:
+          type: number
+        cpuSpeedMHz:
+          type: number
+        loadAverage:
+          type: array
+          items:
+            type: number
+        networkInterfaces:
+          type: array
+          items:
+            type: object
+            properties:
+              interface:
+                type: string
+              address:
+                type: string
+              mac:
+                type: string
+        process:
+          type: object
+          properties:
+            pid:
+              type: number
+            rssKB:
+              type: number
+            heapUsedKB:
+              type: number
+            heapTotalKB:
+              type: number
+            externalKB:
+              type: number
       required:
         - runningApps
         - cpu

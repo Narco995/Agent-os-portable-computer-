@@ -7,7 +7,7 @@ import { useGetScreenshot } from '@workspace/api-client-react';
 export function ComputerUsePanel() {
   const { computerPanelOpen, toggleComputerPanel } = useOSStore();
   const { data: screenshot, refetch, isFetching } = useGetScreenshot({
-    query: { refetchInterval: 5000, enabled: computerPanelOpen }
+    query: { queryKey: ['/api/system/screenshot'], refetchInterval: 5000, enabled: computerPanelOpen }
   });
 
   return (

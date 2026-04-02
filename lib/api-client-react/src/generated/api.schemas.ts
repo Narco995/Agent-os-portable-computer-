@@ -110,6 +110,34 @@ export interface SystemState {
   uptime: number;
   connectedAgents: number;
   totalCommands: number;
+  totalMemoryGB?: number;
+  freeMemoryGB?: number;
+  usedMemoryGB?: number;
+  processUptime?: number;
+  platform?: string;
+  arch?: string;
+  hostname?: string;
+  nodeVersion?: string;
+  cpuModel?: string;
+  cpuCores?: number;
+  cpuSpeedMHz?: number;
+  loadAverage?: number[];
+  networkInterfaces?: NetworkInterface[];
+  process?: ProcessInfo;
+}
+
+export interface NetworkInterface {
+  interface: string;
+  address: string;
+  mac: string;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  rssKB: number;
+  heapUsedKB: number;
+  heapTotalKB: number;
+  externalKB?: number;
 }
 
 export interface App {

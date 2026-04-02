@@ -118,7 +118,9 @@ function TaskCard({ task }: { task: any }) {
 export function TasksApp() {
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
-  const { data: tasks, isLoading, refetch, isFetching } = useListTasks({ query: { refetchInterval: 2000 } });
+  const { data: tasks, isLoading, refetch, isFetching } = useListTasks({
+    query: { queryKey: ['/api/tasks'], refetchInterval: 2000 }
+  });
   const { data: agents } = useListAgents();
   const { mutate: createTask, isPending } = useCreateTask();
 

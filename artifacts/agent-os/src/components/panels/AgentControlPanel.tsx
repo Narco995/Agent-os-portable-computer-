@@ -13,7 +13,9 @@ export function AgentControlPanel() {
   const { mutate: register, isPending: isRegistering } = useRegisterAgent();
   const { mutate: execute, isPending: isExecuting } = useExecuteCommand();
   const { data: agents } = useListAgents();
-  const { data: commands } = useListCommands({ query: { refetchInterval: 3000 } });
+  const { data: commands } = useListCommands({
+    query: { queryKey: ['/api/commands'], refetchInterval: 3000 }
+  });
 
   // Registration Form State
   const [regName, setRegName] = useState('');

@@ -112,6 +112,30 @@ export const GetSystemStateResponse = zod.object({
   uptime: zod.number(),
   connectedAgents: zod.number(),
   totalCommands: zod.number(),
+  totalMemoryGB: zod.number().optional(),
+  freeMemoryGB: zod.number().optional(),
+  usedMemoryGB: zod.number().optional(),
+  processUptime: zod.number().optional(),
+  platform: zod.string().optional(),
+  arch: zod.string().optional(),
+  hostname: zod.string().optional(),
+  nodeVersion: zod.string().optional(),
+  cpuModel: zod.string().optional(),
+  cpuCores: zod.number().optional(),
+  cpuSpeedMHz: zod.number().optional(),
+  loadAverage: zod.array(zod.number()).optional(),
+  networkInterfaces: zod.array(zod.object({
+    interface: zod.string(),
+    address: zod.string(),
+    mac: zod.string(),
+  })).optional(),
+  process: zod.object({
+    pid: zod.number(),
+    rssKB: zod.number(),
+    heapUsedKB: zod.number(),
+    heapTotalKB: zod.number(),
+    externalKB: zod.number().optional(),
+  }).optional(),
 });
 
 /**
